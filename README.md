@@ -14,10 +14,10 @@
 
 ## 🎬 核心成果演示 (Demos)
 
-| 🧭 传统控制：有限状态机与角落逃逸 (`smart_driver`) | 🧠 强化学习：PPO 端到端激光雷达避障 (`rl_driver`) |
+| 🧭 传统控制：基于 LiDAR 扇区划分的自主避障 (smart_driver) | 🧠 强化学习：PPO 端到端激光雷达避障 (`rl_driver`) |
 | :---: | :---: |
 | <img src="docs/smart_driver_demo.gif" width="400"> | <img src="docs/rl_driver_demo.gif" width="400"> |
-| **技术点**: P-Controller, 死锁破局, 运动学 | **技术点**: 观测空间降维, Tensor 映射, 安全限幅 |
+| **技术点**:扇区降维, 阈值状态机, 运动学 | **技术点**: 观测空间降维, Tensor 映射, 安全限幅 |
 
 ## 🛠️ 技术深度与工程突破
 
@@ -25,9 +25,10 @@
 - **Kinematics & Dynamics**: 独立编写双轮差速底盘及万向轮(Caster wheel)的 URDF。精确配置惯性张量 (Inertia Matrix) 与碰撞体积 (Collision)，通过设定万向轮的极低摩擦系数 ($\mu=0.001$)，彻底解决底盘干涉与滑动摩擦导致的转向死锁问题。
 - **Sensor Integration**: 挂载 2D Lidar，完成 `gz.msgs` 到 `sensor_msgs/LaserScan` 的底层 QoS (Quality of Service) 桥接配置，解决 `Best Effort` 导致的数据丢失问题，并在 Rviz2 中实现点云与 TF 树的高精度对齐。
 
-### 2. 经典控制：智能状态机设计 (FSM)
-- 提取 LiDAR 及里程计状态，构建多级状态机实现平滑贴墙巡航。
-- **Corner Deadlock Escape (角落逃逸机制)**：针对直角地形引发的死锁问题，创新性地引入“强制切向扰动速度”，在角落处打破常规的姿态对齐优先级，利用位移打破几何死锁，实现流畅过弯。
+### 2. 经典控制：：基于 LiDAR 的反应式导航 (Reactive Navigation)
+- 数据清洗与降维 (Data Pre-processing)：实时监听 /scan 点云数据，利用列表推导式处理超出量程的 inf 异常值，并将其归一化至安全阈值内，保证控制系统的稳定性。
+- 动态扇区切割 (Sector Slicing)：摒弃对全量 360 维点云的复杂运算，将感知视野在空间上切分为三大核心特征区（前 front、左 left、右 right），将空间测距转化为三个降维特征输入。
+- 阈值状态机避障 (Threshold FSM)：设计基于最小安全距离 (warn_dis = 1.0m) 的分层控制逻辑。当触发危险阈值时，自动对比左右两侧空旷度 (min(left) > min(right))，动态分配角速度实现最优避让。
 
 ### 3. 强化学习实车部署 (Sim-to-Sim/Real Pipeline)
 - **Feature Alignment (特征对齐)**：针对仿真环境与现实/高保真引擎的 Domain Gap，编写 Adapter 节点。将 360 维高频雷达数据清洗（处理 `inf` 异常值）并池化降采样至 3 维核心扇区特征，消除 OOD (Out of Distribution) 干扰。
