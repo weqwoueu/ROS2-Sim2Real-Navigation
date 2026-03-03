@@ -16,7 +16,7 @@
 
 | 🧭 传统控制：基于 LiDAR 扇区划分的自主避障 (smart_driver) | 🧠 强化学习：PPO 端到端激光雷达避障 (`rl_driver`) |
 | :---: | :---: |
-| <img src="docs/smart_driver_demo.gif" width="400"> | <img src="docs/rl_driver_demo.gif" width="400"> |
+| <img src="docs/smart_driver.gif" width="400"> | <img src="docs/rl_driver.gif" width="400"> |
 | **技术点**:扇区降维, 阈值状态机, 运动学 | **技术点**: 观测空间降维, Tensor 映射, 安全限幅 |
 
 ## 🛠️ 技术深度与工程突破
