@@ -38,9 +38,9 @@ class aidriver(Node):
         rightmin = np.min(ranges_np[0:60])
 
         observation = np.array([frontmin,leftmin,rightmin],dtype=np.float32)
+
 """
-
-
+        
         #24输出版本
         step = len(ranges_np)//24
         observation = []
@@ -65,7 +65,7 @@ class aidriver(Node):
             raw_linear = action[0]
 
         #np.clip(数据, 最小值, 最大值) 限幅
-        cmd.angular.z = np.clip(raw_angular,-1.0,1.0)*10
+        cmd.angular.z = np.clip(raw_angular,-1.0,1.0)*5
         cmd.linear.x = np.clip(raw_linear,0.0,1.0)*0.5
 
         self.publisher.publish(cmd)
