@@ -1,78 +1,62 @@
-# 🐢 ROS 2 Autonomous Wall-Following & Corner-Escape System
-> **基于 ROS 2 的移动机器人自主贴墙与角落逃逸算法实现**
-img width="550" height="599" alt="Screenshot from 2026-02-05 14-53-07" src="https://github.com/user-attachments/assets/86eeecb0-4521-468c-9387-d9c623743416" />
+
+# 🚗 ROS 2 Sim-to-Real: Autonomous Navigation & RL Control
+> 基于 ROS 2 (Jazzy) 与 Gazebo 的移动机器人自主导航与端到端强化学习部署平台
+
+![ROS2](https://img.shields.io/badge/ROS_2-Jazzy-22314E?logo=ros)
+![Gazebo](https://img.shields.io/badge/Gazebo-Harmonic-FF8A00)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch)
+![Stable-Baselines3](https://img.shields.io/badge/Algorithm-PPO-0052CC)
+
+## 📖 项目简介
+本项目旨在构建一个完整的 **"感知-决策-控制"** 具身智能闭环系统。利用机械运动学知识从零构建机器人 URDF 物理模型，打通 Gazebo 物理引擎与 ROS 2 TF 坐标树的异步通信链路，并分别实现了基于**基于 LiDAR 扇区划分的自主避障**与**基于 PPO 算法的端到端自动驾驶**。
+
+本项目展示了从传统的几何逻辑控制，向现代数据驱动(Data-Driven)与 Sim-to-Real 部署的完整工程演进。
+
+## 🎬 核心成果演示 (Demos)
+
+| 🧭 传统控制：基于 LiDAR 扇区划分的自主避障 (smart_driver) | 🧠 强化学习：PPO 端到端激光雷达避障 (`rl_driver`) |
+| :---: | :---: |
+| <img src="docs/smart_driver.gif" width="400"> | <img src="docs/rl_driver.gif" width="400"> |
+| **技术点**:扇区降维, 阈值状态机, 运动学 | **技术点**: 观测空间降维, Tensor 映射, 安全限幅 |
+
+## 🛠️ 技术深度与工程突破
+
+### 1. 机械建模与物理仿真 (URDF & Gazebo)
+- **Kinematics & Dynamics**: 独立编写双轮差速底盘及万向轮(Caster wheel)的 URDF。精确配置惯性张量 (Inertia Matrix) 与碰撞体积 (Collision)，通过设定万向轮的极低摩擦系数 ($\mu=0.001$)，彻底解决底盘干涉与滑动摩擦导致的转向死锁问题。
+- **Sensor Integration**: 挂载 2D Lidar，完成 `gz.msgs` 到 `sensor_msgs/LaserScan` 的底层 QoS (Quality of Service) 桥接配置，解决 `Best Effort` 导致的数据丢失问题，并在 Rviz2 中实现点云与 TF 树的高精度对齐。
+
+### 2. 经典控制：：基于 LiDAR 的反应式导航 (Reactive Navigation)
+- 数据清洗与降维 (Data Pre-processing)：实时监听 /scan 点云数据，利用列表推导式处理超出量程的 inf 异常值，并将其归一化至安全阈值内，保证控制系统的稳定性。
+- 动态扇区切割 (Sector Slicing)：摒弃对全量 360 维点云的复杂运算，将感知视野在空间上切分为三大核心特征区（前 front、左 left、右 right），将空间测距转化为三个降维特征输入。
+- 阈值状态机避障 (Threshold FSM)：设计基于最小安全距离 (warn_dis = 1.0m) 的分层控制逻辑。当触发危险阈值时，自动对比左右两侧空旷度 (min(left) > min(right))，动态分配角速度实现最优避让。
+
+### 3. 强化学习实车部署 (Sim-to-Sim/Real Pipeline)
+- **Feature Alignment (特征对齐)**：针对仿真环境与现实/高保真引擎的 Domain Gap，编写 Adapter 节点。将 360 维高频雷达数据清洗（处理 `inf` 异常值）并池化降采样至 3 维核心扇区特征，消除 OOD (Out of Distribution) 干扰。
+- **Safety Control (底层执行保护)**：对 PPO 网络输出的高斯分布连续动作空间（Action Space）进行 `np.clip` 物理限幅。将无量纲的 Tensor 安全映射为真实的 `geometry_msgs/Twist` 速度指令，并部署基于心跳监测的自动刹车机制。
+
+## 📂 仓库结构
+
+```text
+├── first_robot_bringup/  # ROS 2 Launch 启动包 (一键拉起环境、TF、桥接)
+├── models/               # 训练好的 PPO 策略网络权重 (*.zip)
+├── robot_description/    # 机器人的机械结构设计 (URDF 描述文件)
+├── scripts/              # 核心控制节点源码
+│   ├── smart_driver.py   # 传统控制：状态机壁障与贴边节点
+│   ├── rl_driver.py      # AI控制：加载 PPO 模型并执行推理的节点
+│   └── train_custom_env.py # Gym 强化学习数学替身环境与训练脚本
+├── docs/                 # 演示素材存放处
+└── README.md
+
+## 📂 How to run
+
+cd ROS2-Sim2Real-Navigation
+
+# 激活 ROS 2 系统环境
+ros2 launch first_robot_bringup sim.launch.py
+# 方案 A：启动传统状态机驾驶员
+python3 scripts/smart_driver.py
+
+# 方案 B：启动 PPO 强化学习驾驶员 (需在 Conda 环境下执行以调用 PyTorch)
+python3 scripts/rl_driver.py
 
 
-## 📖 项目背景 (Background)
-在移动机器人导航中，**“贴墙跟随 (Wall Following)”** 是最基础也是最具挑战性的行为之一。尤其是在死角（Corner）区域，简单的规则控制往往会导致机器人陷入局部极值（Local Minima）或原地震荡。
-
-本项目基于 **ROS 2** 框架，设计了一套包含**P控制（比例控制）**与**状态机（State Machine）**的闭环控制算法，成功解决了机器人在受限空间内的自主导航与死锁逃逸问题。
-
-## 🛠 技术栈 (Tech Stack)
-*   **Framework**: ROS 2 (Jazzy/Humble)
-*   **Language**: Python 3 (`rclpy`)
-*   **Algorithm**: Closed-loop Kinematic Control, State Machine
-*   **Simulation**: Turtlesim
-
-## 🚀 核心算法逻辑 (Core Algorithms)
-
-本项目并未采用黑盒的强化学习，而是设计了一套**可解释性强、鲁棒性高**的规则系统。核心逻辑如下：
-
-### 1. 虚拟感知层 (Virtual Perception)
-通过订阅 `/turtle1/pose` 话题，实时解算机器人相对于环境边界（四面墙壁）的**欧氏距离**。
-```python
-# 实时计算最近障碍物距离 (Lidar-like Logic)
-dis_x = abs(min(current_x, abs(current_x - 11.09)))
-dis_y = abs(min(current_y, abs(current_y - 11.09)))![Uploading Screenshot from 2026-02-05 14-53-07.png…]()
-
-clo_dis = min(dis_x, dis_y)
-```
-
-### 2. 速度规划 (Velocity Profiling)
-为了防止机器人高速撞墙，引入了 **P-Controller (比例控制器)**。
-*   **逻辑**：线速度与最近障碍物距离成正比 (`v = Kp * distance`)。
-*   **效果**：当机器人远离墙壁时全速行驶，接近墙壁时自动平滑减速，实现“软着陆”。
-
-### 3. 角落死锁逃逸机制 (Corner Deadlock Escape) —— **项目亮点** ✨
-在矩形角落（同时靠近 X 轴和 Y 轴墙壁）是传统算法最容易失效的区域。本项目设计了特殊的逃逸逻辑：
-
-*   **状态检测**：当 `abs(dis_x - dis_y) <= 0.1` 且处于边界区域时，判定为进入“角落死区”。
-*   **姿态解算**：检查当前航向角是否对齐（0, 90, 180, 270度）。
-*   **逃逸策略**：
-    *   若姿态不对齐：优先原地旋转 (`angular.z = 1.0`)。
-    *   **若姿态已对齐但仍被困（死锁）**：强制输出混合速度矢量 (`linear.x = 0.5`, `angular.z = 0.5`)。这会产生一个切向运动，强制机器人破坏当前的稳定平衡态，从而“滑”出死角。
-
-## 📝 代码实现细节 (Code Logic)
-
-整个控制逻辑被封装在 `pose_callback` 中，形成一个实时闭环：
-
-1.  **安全区 (Safe Zone)**:
-    *   判定：距离墙壁 > 2.0m。
-    *   动作：执行 P 控制直行，快速接近边界。
-
-2.  **单边墙壁修正 (Wall Alignment)**:
-    *   判定：只靠近一面墙。
-    *   动作：检测角度误差。如果未平行于墙面，执行原地转向；如果已平行，沿墙巡航。
-
-3.  **角落处理 (Corner Handling)**:
-    *   判定：同时靠近两面墙 (差值 < 0.1)。
-    *   动作：**触发自动修正逻辑**。无论当前是否对齐，强制施加角速度和线速度，完成 90 度转弯机动。
-
-## 📸 结果分析 (Result Analysis)
-从运行截图可以看出：
-1.  **轨迹平滑**：直线路段没有明显的震荡，证明 P 控制参数 (`p=0.5`) 选择得当。
-2.  **转弯精准**：在四个顶点处，机器人均完成了标准的 90 度转向，没有发生碰撞或卡死。
-3.  **内旋收敛**：随着路径演化，机器人自动向中心收敛，证明了算法在连续空间内的稳定性。
-
-## 🏃 如何运行 (Usage)
-
-1.  启动仿真环境：
-    ```bash
-    ros2 run turtlesim turtlesim_node
-    ```
-2.  启动控制节点：
-    ```bash
-    python3 smart_turtle.py
-    ```
-
----
