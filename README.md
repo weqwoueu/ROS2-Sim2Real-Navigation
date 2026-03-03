@@ -46,3 +46,17 @@
 │   └── train_custom_env.py # Gym 强化学习数学替身环境与训练脚本
 ├── docs/                 # 演示素材存放处
 └── README.md
+
+## 📂 How to run
+
+cd ROS2-Sim2Real-Navigation
+
+# 激活 ROS 2 系统环境
+ros2 launch first_robot_bringup sim.launch.py
+# 方案 A：启动传统状态机驾驶员
+python3 scripts/smart_driver.py
+
+# 方案 B：启动 PPO 强化学习驾驶员 (需在 Conda 环境下执行以调用 PyTorch)
+python3 scripts/rl_driver.py
+
+
